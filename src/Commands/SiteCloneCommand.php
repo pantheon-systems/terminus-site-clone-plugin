@@ -30,7 +30,7 @@ class SiteCloneCommand extends SiteCommand
      * @option no-db Skip cloning the database
      * @option no-files Skip cloning the (media) files
      * @option no-code Skip cloning the code
-     * @option skip-backup Skip making a fresh backup to export on the source site AND skip backup creation before import on the destination site
+     * @option no-backup Skip making a fresh backup for export from the source site AND skip backup creation before import on the destination site
      */
     public function clonePantheonSite(
             $user_source,
@@ -39,7 +39,7 @@ class SiteCloneCommand extends SiteCommand
                 'no-db' => false,
                 'no-files' => false,
                 'no-code' => false,
-                'skip-backup' => false,
+                'no-backup' => false,
         ])
     {
         // $user = $this->session()->getUser();
@@ -82,7 +82,7 @@ class SiteCloneCommand extends SiteCommand
             ]
         );
 
-        if( ! $options['skip-backup'] ){
+        if( ! $options['no-backup'] ){
             // @todo Only create backups of the selected elements
             $backup_elements = $this->getBackupElements($options);
             
