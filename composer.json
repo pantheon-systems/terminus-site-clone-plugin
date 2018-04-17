@@ -1,0 +1,14 @@
+{
+    "name": "ataylorme/terminus-site-clone-plugin",
+    "description": "Site Clone - A Terminus plugin that adds command(s) to facilitate cloning sites on Pantheon.",
+    "license": "MIT",
+    "type": "terminus-plugin",
+    "autoload": {
+        "psr-4": { "Pantheon\\TerminusSiteClone\\": "src" }
+    },
+    "extra": {
+        "terminus": {
+            "compatible-version": "^1.4"
+        }
+    }
+}
