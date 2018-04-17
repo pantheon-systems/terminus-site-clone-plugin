@@ -10,7 +10,6 @@ namespace Pantheon\TerminusSiteClone\Commands;
 use Pantheon\Terminus\Commands\TerminusCommand;
 use Pantheon\Terminus\Exceptions\TerminusException;
 use Pantheon\Terminus\Commands\Site\SiteCommand;
-use Pantheon\Terminus\Commands\Backup\GetCommand;
 use Pantheon\Terminus\Request\RequestAwareInterface;
 use Pantheon\Terminus\Request\RequestAwareTrait;
 
@@ -95,10 +94,6 @@ class SiteCloneCommand extends SiteCommand
             $this->createBackup($destination);
             
             $source_backups = [];
-
-            if( 'all' === $backup_elements ){
-                $backup_elements = ['db','code','files'];
-            }
             
             foreach( $backup_elements as $element ){
                 $source_backups[$element] = $this->getLatestBackup($user_source, $source['env_raw'], $element);
@@ -128,23 +123,29 @@ class SiteCloneCommand extends SiteCommand
         return $return;
     }
 
+    /**
+     * Get backup elements based on input options
+     *
+     * @param array $options
+     * @return array
+     */
     private function getBackupElements($options){
-        $elements = ['db','code','files'];
+        $elements = [];
             
-        if ( $options['no-db'] && ($key = array_search('db', $elements)) !== false) {
-            unset($elements[$key]);
+        if ( ! $options['no-db'] ) {
+            $elements[] = 'db';
         }
         
-        if ( $options['no-code'] && ($key = array_search('code', $elements)) !== false) {
-            unset($elements[$key]);
+        if ( ! $options['no-code'] ) {
+            $elements[] = 'code';
         }
         
-        if ( $options['no-files'] && ($key = array_search('files', $elements)) !== false) {
-            unset($elements[$key]);
+        if ( ! $options['no-files'] ) {
+            $elements[] = 'files';
         }
-        
-        if( 3 === count($elements) ){
-            $elements = 'all';
+
+        if( empty($elements) ){
+            throw new TerminusNotFoundException('You cannot skip cloning all elements.');
         }
 
         return $elements;
