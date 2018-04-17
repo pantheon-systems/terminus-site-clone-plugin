@@ -10,6 +10,9 @@ namespace Pantheon\TerminusSiteClone\Commands;
 use Pantheon\Terminus\Commands\TerminusCommand;
 use Pantheon\Terminus\Exceptions\TerminusException;
 use Pantheon\Terminus\Commands\Site\SiteCommand;
+use Pantheon\Terminus\Commands\Backup\GetCommand;
+use Pantheon\Terminus\Request\RequestAwareInterface;
+use Pantheon\Terminus\Request\RequestAwareTrait;
 
 /**
  * Site Clone Command
@@ -85,12 +88,24 @@ class SiteCloneCommand extends SiteCommand
         if( ! $options['no-backup'] ){
             // @todo Only create backups of the selected elements
             $backup_elements = $this->getBackupElements($options);
-            
+
             // @todo Check if there is a recent backup and ask the user if they want to backup again
             $this->createBackup($source);
-
+            
             $this->createBackup($destination);
             
+            $source_backups = [];
+
+            if( 'all' === $backup_elements ){
+                $backup_elements = ['db','code','files'];
+            }
+            
+            foreach( $backup_elements as $element ){
+                $source_backups[$element] = $this->getLatestBackup($user_source, $source['env_raw'], $element);
+
+                // todo: Prompt the user to download the backup file locally
+            }
+
         }
 
     }
@@ -161,4 +176,38 @@ class SiteCloneCommand extends SiteCommand
         return $backup;
     }
 
+    private function getLatestBackup($site_env, $env, $element='all')
+    {
+        $backup_options = ['file' => null, 'element' => $element, 'to' => null,];
+
+        $backups = $env->getBackups($site_env, $backup_options)->getFinishedBackups();
+
+        if (empty($backups)) {
+            throw new TerminusNotFoundException(
+                'No {element} backups available. Create one with `terminus backup:create {site}.{env}`',
+                [
+                    'element' => $element,
+                    'site' => $source['name'],
+                    'env' => $source['env'],
+                ]
+            );
+        }
+
+        $latest_backup = array_shift($backups);
+
+        $return = $latest_backup->serialize();
+
+        $return['url'] = $latest_backup->getUrl();
+
+        return $return;
+    }
+
 }
+
+/**
+class SiteCloneBackups extends SingleBackupCommand implements RequestAwareInterface
+{
+    use RequestAwareTrait;
+
+}
+*/
