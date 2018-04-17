@@ -105,6 +105,7 @@ class SiteCloneCommand extends SiteCommand
         $parsed = $this->getSiteEnv($site_env);
         $return = $parsed[0]->serialize();
         $return['site_raw'] = $parsed[0];
+        // Turn the string value of 'true' or 'false' into a boolean
         $return['frozen'] = filter_var($return['frozen'], FILTER_VALIDATE_BOOLEAN);
         $return['env'] = $parsed[1]->id;
         $return['env_raw'] = $parsed[1];
