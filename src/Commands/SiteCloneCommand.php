@@ -12,13 +12,15 @@ use Pantheon\Terminus\Exceptions\TerminusException;
 use Pantheon\Terminus\Commands\Site\SiteCommand;
 use Pantheon\Terminus\Request\RequestAwareInterface;
 use Pantheon\Terminus\Request\RequestAwareTrait;
+use Pantheon\Terminus\Commands\Backup\SingleBackupCommand;
 
 /**
  * Site Clone Command
  * @package Pantheon\TerminusSiteClone\Commands
  */
-class SiteCloneCommand extends SiteCommand
+class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterface
 {
+    use RequestAwareTrait;
     
     /**
      * Copy the code, db and files from the specified Pantheon source site
@@ -70,37 +72,60 @@ class SiteCloneCommand extends SiteCommand
         }
         
         if( $source['frozen'] || $destination['frozen'] ){
-            // @todo Ask the user if they want to unfreeze the site
+            // @todo: Ask the user if they want to unfreeze the site
             throw new TerminusException('Cannot clone sites that are frozen.');
         }
 
-        $this->log()->notice(
-            "Cloning from the {src_env} environment of {src} to the {dest_env} environment of {dest}...\n", 
+        $confirmation_message = 'Are you sure you want to clone from the {src}.{src_env} environment (source) to the {dest}.{dest_env} (destination)? This will completely destroy the destination.';
+
+        if( ! $options['no-backup'] ){
+            $confirmation_message .= ' A backup will be made first, just in case.';
+        }
+
+        $confirm = $this->confirm(
+            $confirmation_message . "\n",
             [ 
-                'src' => $source['label'],
+                'src' => $source['name'],
                 'src_env' => $source['env'],
-                'dest' => $destination['label'],
+                'dest' => $destination['name'],
                 'dest_env' => $destination['env'],
             ]
         );
 
+        if( ! $confirm ){
+            return;
+        }
+
         if( ! $options['no-backup'] ){
-            // @todo Only create backups of the selected elements
-            $backup_elements = $this->getBackupElements($options);
 
-            // @todo Check if there is a recent backup and ask the user if they want to backup again
-            $this->createBackup($source);
-            
             $this->createBackup($destination);
-            
-            $source_backups = [];
-            
-            foreach( $backup_elements as $element ){
-                $source_backups[$element] = $this->getLatestBackup($user_source, $source['env_raw'], $element);
+        }
 
-                // todo: Prompt the user to download the backup file locally
+        $backup_elements = $this->getBackupElements($options);
+        
+        $source_backups = [];
+        
+        foreach( $backup_elements as $element ){
+            
+            if( ! $options['no-backup'] ){
+                $this->createBackup($source, $element);
             }
 
+            $source_backups[$element] = $this->getLatestBackup($source, $element);
+
+            if( !isset( $source_backups[$element]['url'] ) || empty( $source_backups[$element]['url'] ) ){
+                $this->log()->notice(
+                    'Failed to backup {element} on the {site}.{env} environment. It will not be imported.',
+                    [
+                        'site' => $source['name'],
+                        'env' => $source['env'],
+                        'element' => $element,
+                    ]
+                );
+                continue;
+            }
+
+            $this->importBackup($source, $destination, $element, $source_backups[$element]['url']);
         }
 
     }
@@ -119,6 +144,8 @@ class SiteCloneCommand extends SiteCommand
         $return['frozen'] = filter_var($return['frozen'], FILTER_VALIDATE_BOOLEAN);
         $return['env'] = $parsed[1]->id;
         $return['env_raw'] = $parsed[1];
+        $return['url'] = 'https://' . $return['env'] . '-' . $return['name'] . '.pantheonsite.io/';
+        $return['pantheon_domain'] = $return['env'] . '-' . $return['name'] . '.pantheonsite.io';
 
         return $return;
     }
@@ -129,11 +156,12 @@ class SiteCloneCommand extends SiteCommand
      * @param array $options
      * @return array
      */
-    private function getBackupElements($options){
+    private function getBackupElements($options)
+    {
         $elements = [];
             
         if ( ! $options['no-db'] ) {
-            $elements[] = 'db';
+            $elements[] = 'database';
         }
         
         if ( ! $options['no-code'] ) {
@@ -151,47 +179,66 @@ class SiteCloneCommand extends SiteCommand
         return $elements;
     }
 
-    private function createBackup($site, $elements = 'all' ){
+    private function createBackup($site, $element = 'all' )
+    {
+        $message = 'Creating a {element} backup on the {site}.{env} environment...';
+        
+        if( 'all' === $element ){
+            $message = 'Creating a backup of the code, database and media files on the {site}.{env} environment...';
+        }
+
         $this->log()->notice(
-            'Creating a backup of the {env} environment for the {label} site...',
+            $message,
             [
-                'label' => $site['label'],
+                'site' => $site['name'],
                 'env' => $site['env'],
+                'element' => $element,
             ]
         );
 
-        $backup = $site['env_raw']->getBackups()->create();
+        $backup_options = ['element' => ( $element !== 'all' ) ? $element : null, 'keep-for' => 365,];
+        
+        $backup = $site['env_raw']->getBackups()->create($backup_options);
 
         while (!$backup->checkProgress()) {
             // @todo: Add Symfony progress bar to indicate that something is happening.
         }
+
+        $message = "Finished backing up the {element} on the {site}.{env} environment.\n";
+        
+        if( 'all' === $element ){
+            $message = "Finished backing up the code, database and media files on the {site}.{env} environment.\n";
+        }
         
         $this->log()->notice(
-            "Finished creating a backup of the {env} environment for the {label} site...\n",
+            $message,
             [
-                'label' => $site['label'],
+                'site' => $site['name'],
                 'env' => $site['env'],
+                'element' => $element,
             ]
         );
 
         return $backup;
     }
 
-    private function getLatestBackup($site_env, $env, $element='all')
+    private function getLatestBackup($site, $element = 'all')
     {
-        $backup_options = ['file' => null, 'element' => $element, 'to' => null,];
+        // $backup_options = ['file' => null, 'element' => $element, 'to' => null,];
 
-        $backups = $env->getBackups($site_env, $backup_options)->getFinishedBackups();
+        $backups = $site['env_raw']->getBackups()->getFinishedBackups($element);
 
-        if (empty($backups)) {
-            throw new TerminusNotFoundException(
-                'No {element} backups available. Create one with `terminus backup:create {site}.{env}`',
+        if ( empty($backups) ) {
+            $this->log()->notice(
+                "No {element} backups in the {site}.{env} environment found.\n",
                 [
+                    'site' => $site['name'],
+                    'env' => $site['env'],
                     'element' => $element,
-                    'site' => $source['name'],
-                    'env' => $source['env'],
                 ]
             );
+
+            $this->createBackup($site);
         }
 
         $latest_backup = array_shift($backups);
@@ -203,12 +250,113 @@ class SiteCloneCommand extends SiteCommand
         return $return;
     }
 
-}
+    private function importBackup($source, $destination, $element, $url = null)
+    {
+        if( ! $url || null === $url ){
+            return;
+        }
+        
+        switch( $element ){
+            case 'db':
+            case 'database':
+                $this->log()->notice(
+                    'Importing the database on {site}.{env}...',
+                    [
+                        'site' => $destination['name'],
+                        'env' => $destination['env'],
+                    ]
+                );
 
-/**
-class SiteCloneBackups extends SingleBackupCommand implements RequestAwareInterface
-{
-    use RequestAwareTrait;
+                $workflow = $destination['env_raw']->importDatabase($url);
+                
+                while ( !$workflow->checkProgress() ) {
+                    // @todo: Add Symfony progress bar to indicate that something is happening.
+                }
+
+                $this->log()->notice(
+                    "Imported the database to {site}.{env}.\n",
+                    [
+                        'site' => $destination['name'],
+                        'env' => $destination['env'],
+                    ]
+                );
+
+                if( 'wordpress' === $destination['framework'] ){
+                    $this->wpcliSearchReplace($source, $destination);
+                }
+                break;
+
+            case 'files':
+                $this->log()->notice(
+                    'Importing media files on {site}.{env}...',
+                    [
+                        'site' => $destination['name'],
+                        'env' => $destination['env'],
+                    ]
+                );
+
+                $workflow = $destination['env_raw']->importFiles($url);
+                
+                while ( !$workflow->checkProgress() ) {
+                    // @todo: Add Symfony progress bar to indicate that something is happening.
+                }
+
+                $this->log()->notice(
+                    "Imported the media files to {site}.{env}.\n",
+                    [
+                        'site' => $destination['name'],
+                        'env' => $destination['env'],
+                    ]
+                );
+                break;
+
+            case 'code':
+                /*
+                $this->log()->notice(
+                    'Importing code for {site}.{env}...',
+                    [
+                        'site' => $destination['name'],
+                        'env' => $destination['env'],
+                    ]
+                );
+
+                // todo: actually import code
+
+                $this->log()->notice(
+                    "Imported code to {site}.{env}.\n",
+                    [
+                        'site' => $destination['name'],
+                        'env' => $destination['env'],
+                    ]
+                );
+                */
+
+                $this->log()->notice(
+                    "Importing code for {site}.{env} goes here...\n",
+                    [
+                        'site' => $destination['name'],
+                        'env' => $destination['env'],
+                    ]
+                );
+                break;
+        }
+    }
+
+    private function wpcliSearchReplace($source, $destination)
+    {
+        $this->log()->notice(
+            "Using wp-cli search-replace to replace {src_url} with {dest_url} on {site}.{env} as WordPress stores URLs in the database. You may need to run the search-replace manually if using custom domains.\n",
+            [
+                'site' => $destination['name'],
+                'env' => $destination['env'],
+                'src_url' => $source['pantheon_domain'],
+                'dest_url' => $destination['pantheon_domain'],
+            ]
+        );
+
+        $destination['env_raw']->sendCommandViaSsh('wp search-replace ' . $source['pantheon_domain'] . ' ' . $destination['pantheon_domain']);
+
+        $this->log()->notice("\n");
+    }
 
 }
-*/
