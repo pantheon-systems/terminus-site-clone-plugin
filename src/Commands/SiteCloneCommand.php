@@ -358,13 +358,16 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
                         ]
                     );
 
+                    $this->passthru("git -C $git_dir remote set-url origin " . $source_git_url);
                     $this->passthru("git -C $git_dir fetch --all");
+                    $this->passthru("git -C $git_dir pull origin $source_git_branch");
+                    $this->passthru("git -C $git_dir remote set-url origin " . $destination_git_url);
                 }
                 
                 if( false === in_array( $destination['env'], ['dev','test','live'] ) ){
-                    $this->passthru("git -C $git_dir checkout " . $source_git_branch);
-                    $this->passthru("git -C $git_dir fetch origin " . $source_git_branch);
-                    $this->passthru("git -C $git_dir merge origin/" . $source_git_branch);
+                    $this->passthru("git -C $git_dir checkout " . $destination_git_branch);
+                    $this->passthru("git -C $git_dir fetch origin " . $destination_git_branch);
+                    $this->passthru("git -C $git_dir merge origin/" . $destination_git_branch);
                 }
 
                 $this->log()->notice(
