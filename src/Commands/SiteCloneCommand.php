@@ -31,7 +31,7 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
      * @param string $user_source The site UUID or machine name of the SOURCE (<site>.<env>)
      * @param string $user_destination The site UUID or machine name of the DESTINATION (<site>.<env>)
      * @param array $options
-     * @option no-db Skip cloning the database
+     * @option no-database Skip cloning the database
      * @option no-files Skip cloning the (media) files
      * @option no-code Skip cloning the code
      * @option no-backup Skip making a fresh backup for export from the source site AND skip backup creation before import on the destination site
@@ -40,7 +40,7 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
             $user_source,
             $user_destination,
             $options = [
-                'no-db' => false,
+                'no-database' => false,
                 'no-files' => false,
                 'no-code' => false,
                 'no-backup' => false,
@@ -76,6 +76,10 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
             throw new TerminusException('Cannot clone sites that are frozen.');
         }
 
+        if( in_array($destination['env'], ['test', 'live']) ){
+            throw new TerminusException('Cannot clone to the test or live environments. You must use the dev => test => live workflow.');
+        }
+
         $confirmation_message = 'Are you sure you want to clone from the {src}.{src_env} environment (source) to the {dest}.{dest_env} (destination)? This will completely destroy the destination.';
 
         if( ! $options['no-backup'] ){
@@ -106,25 +110,29 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
         
         foreach( $backup_elements as $element ){
 
-            if( ! $options['no-backup'] ){
-                $this->createBackup($source, $element);
+            if( 'code' !== $element ){
+            
+                if( ! $options['no-backup'] ){
+                    $this->createBackup($source, $element);
+                }
+
+                $source_backups[$element] = $this->getLatestBackup($source, $element);
+
+                if( !isset( $source_backups[$element]['url'] ) || empty( $source_backups[$element]['url'] ) ){
+                    $this->log()->notice(
+                        'Failed to backup {element} on the {site}.{env} environment. It will not be imported.',
+                        [
+                            'site' => $source['name'],
+                            'env' => $source['env'],
+                            'element' => $element,
+                        ]
+                    );
+                    continue;
+                }
+
             }
 
-            $source_backups[$element] = $this->getLatestBackup($source, $element);
-
-            if( !isset( $source_backups[$element]['url'] ) || empty( $source_backups[$element]['url'] ) ){
-                $this->log()->notice(
-                    'Failed to backup {element} on the {site}.{env} environment. It will not be imported.',
-                    [
-                        'site' => $source['name'],
-                        'env' => $source['env'],
-                        'element' => $element,
-                    ]
-                );
-                continue;
-            }
-
-            $this->importBackup($source, $destination, $element, $source_backups[$element]['url']);
+            $this->importBackup($source, $destination, $element);
         }
 
     }
@@ -159,16 +167,16 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
     {
         $elements = [];
             
-        if ( ! $options['no-db'] ) {
-            $elements[] = 'database';
-        }
-        
         if ( ! $options['no-code'] ) {
             $elements[] = 'code';
         }
         
         if ( ! $options['no-files'] ) {
             $elements[] = 'files';
+        }
+
+        if ( ! $options['no-database'] ) {
+            $elements[] = 'database';
         }
 
         if( empty($elements) ){
@@ -250,9 +258,6 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
 
     private function importBackup($source, $destination, $element, $url = null)
     {
-        if( ! $url || null === $url ){
-            return;
-        }
         
         switch( $element ){
             case 'db':
@@ -322,47 +327,59 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
                 $git_dir = $temp_dir . $source['name'] . '/';
                 $source_connection_info = $source['env_raw']->connectionInfo();
                 $source_git_url = $source_connection_info['git_url'];
+                $source_git_branch = ( in_array($source['env'], ['dev', 'test', 'live']) ) ? 'master' : $source['env'];
                 $destination_connection_info = $destination['env_raw']->connectionInfo();
                 $destination_git_url = $destination_connection_info['git_url'];
+                $destination_git_branch = ( in_array($destination['env'], ['dev', 'test', 'live']) ) ? 'master' : $destination['env'];
 
                 $destination['env_raw']->changeConnectionMode('git');
                 
                 clearstatcache();
-                if( file_exists( $temp_dir ) ){
-                    $this->passthru('rm -rf ' . $temp_dir);
+                if( ! file_exists( $temp_dir ) ){
+                    mkdir($temp_dir, 0700, true);
+
+                    $this->log()->notice(
+                        'Cloning code for {site}.{env} to {git_dir}...',
+                        [
+                            'site' => $destination['name'],
+                            'env' => $destination['env'],
+                            'git_dir' => $git_dir,
+                        ]
+                    );
+
+                    $this->passthru("git clone $source_git_url $git_dir");
+                } else {
+                    $this->log()->notice(
+                        '{git_dir} already exists for for {site}.{env}. Fetching the latest...',
+                        [
+                            'site' => $destination['name'],
+                            'env' => $destination['env'],
+                            'git_dir' => $git_dir,
+                        ]
+                    );
+
+                    $this->passthru("git -C $git_dir fetch --all");
+                }
+                
+                if( false === in_array( $destination['env'], ['dev','test','live'] ) ){
+                    $this->passthru("git -C $git_dir checkout " . $source_git_branch);
+                    $this->passthru("git -C $git_dir fetch origin " . $source_git_branch);
+                    $this->passthru("git -C $git_dir merge origin/" . $source_git_branch);
                 }
 
-                mkdir($temp_dir, 0700, true);
-
                 $this->log()->notice(
-                    'Cloning code for {site}.{env} to {git_dir}.',
+                    'Force pushing to the {site}.{env} on the {git_branch} branch.',
                     [
                         'site' => $destination['name'],
                         'env' => $destination['env'],
                         'git_dir' => $git_dir,
-                    ]
-                );
-                
-                $this->passthru("git clone $source_git_url $git_dir");
-                
-                if( false === in_array( $source['env'], ['dev','test','live'] ) ){
-                    $this->passthru("git -C $git_dir checkout " . $source['env']);
-                }
-
-                $this->log()->notice(
-                    'Force pushing to {site}.{env} and removing the temporary {git_dir} directory.',
-                    [
-                        'site' => $destination['name'],
-                        'env' => $destination['env'],
-                        'git_dir' => $git_dir,
+                        'git_branch' => $destination_git_branch,
                     ]
                 );
 
                 $this->passthru("git -C $git_dir remote set-url origin " . $destination_git_url);
                 
-                $this->passthru("git -C $git_dir push origin master --force");
-
-                $this->passthru('rm -rf ' . $temp_dir);
+                $this->passthru("git -C $git_dir push origin $source_git_branch:$destination_git_branch --force");
 
                 $this->log()->notice(
                     "Sucessfully imported code to {site}.{env}.\n",
