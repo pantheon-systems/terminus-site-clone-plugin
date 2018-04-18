@@ -4,7 +4,7 @@
 Site Clone - A [Terminus](http://github.com/pantheon-systems/terminus) plugin that adds command(s) to facilitate cloning sites on [Pantheon](https://pantheon.io/).
 
 ## Usage
-`terminus site:clone <source>.<env> <destination>.<env>` where `<source>` and `<destination>` are site UUID or machine name and `<env>` is a valid environment (dev, test, live or multidev).
+`terminus site:clone <source>.<env> <destination>.<env>` where `<source>` and `<destination>` are site UUID or machine name and `<env>` is a valid environment (dev, test, live or multidev). You can also pass the argument(s) `--no-database`, `--no-files` and `--no-code` to skip cloning one or more items. You cannot, however, skip all three.
 
 ## License
 MIT

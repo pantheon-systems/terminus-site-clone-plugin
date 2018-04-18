@@ -170,13 +170,13 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
         if ( ! $options['no-code'] ) {
             $elements[] = 'code';
         }
-        
-        if ( ! $options['no-files'] ) {
-            $elements[] = 'files';
-        }
 
         if ( ! $options['no-database'] ) {
             $elements[] = 'database';
+        }
+        
+        if ( ! $options['no-files'] ) {
+            $elements[] = 'files';
         }
 
         if( empty($elements) ){
@@ -323,7 +323,7 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
                 );
 
                 $site_clone_dir = getcwd();
-                $temp_dir = $site_clone_dir . '/tmp/';
+                $temp_dir = $site_clone_dir . '/terminus-site-clone-temp/';
                 $git_dir = $temp_dir . $source['name'] . '/';
                 $source_connection_info = $source['env_raw']->connectionInfo();
                 $source_git_url = $source_connection_info['git_url'];
@@ -335,7 +335,7 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
                 $destination['env_raw']->changeConnectionMode('git');
                 
                 clearstatcache();
-                if( ! file_exists( $temp_dir ) ){
+                if( ! file_exists( $git_dir ) ){
                     mkdir($temp_dir, 0700, true);
 
                     $this->log()->notice(
