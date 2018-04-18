@@ -97,8 +97,7 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
         }
 
         if( ! $options['no-backup'] ){
-
-            $this->createBackup($destination);
+            // $this->createBackup($destination);
         }
 
         $backup_elements = $this->getBackupElements($options);
@@ -106,7 +105,7 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
         $source_backups = [];
         
         foreach( $backup_elements as $element ){
-            
+
             if( ! $options['no-backup'] ){
                 $this->createBackup($source, $element);
             }
@@ -224,7 +223,6 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
 
     private function getLatestBackup($site, $element = 'all')
     {
-        // $backup_options = ['file' => null, 'element' => $element, 'to' => null,];
 
         $backups = $site['env_raw']->getBackups()->getFinishedBackups($element);
 
@@ -311,34 +309,68 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
                 break;
 
             case 'code':
-                /*
                 $this->log()->notice(
-                    'Importing code for {site}.{env}...',
+                    'Importing code on {site}.{env} with git...',
                     [
                         'site' => $destination['name'],
                         'env' => $destination['env'],
                     ]
                 );
 
-                // todo: actually import code
+                $site_clone_dir = getcwd();
+                $temp_dir = $site_clone_dir . '/tmp/';
+                $git_dir = $temp_dir . $source['name'] . '/';
+                $source_connection_info = $source['env_raw']->connectionInfo();
+                $source_git_url = $source_connection_info['git_url'];
+                $destination_connection_info = $destination['env_raw']->connectionInfo();
+                $destination_git_url = $destination_connection_info['git_url'];
+
+                $destination['env_raw']->changeConnectionMode('git');
+                
+                clearstatcache();
+                if( file_exists( $temp_dir ) ){
+                    $this->passthru('rm -rf ' . $temp_dir);
+                }
+
+                mkdir($temp_dir, 0700, true);
 
                 $this->log()->notice(
-                    "Imported code to {site}.{env}.\n",
+                    'Cloning code for {site}.{env} to {git_dir}.',
+                    [
+                        'site' => $destination['name'],
+                        'env' => $destination['env'],
+                        'git_dir' => $git_dir,
+                    ]
+                );
+                
+                $this->passthru("git clone $source_git_url $git_dir");
+                
+                if( false === in_array( $source['env'], ['dev','test','live'] ) ){
+                    $this->passthru("git -C $git_dir checkout " . $source['env']);
+                }
+
+                $this->log()->notice(
+                    'Force pushing to {site}.{env} and removing the temporary {git_dir} directory.',
+                    [
+                        'site' => $destination['name'],
+                        'env' => $destination['env'],
+                        'git_dir' => $git_dir,
+                    ]
+                );
+
+                $this->passthru("git -C $git_dir remote set-url origin " . $destination_git_url);
+                
+                $this->passthru("git -C $git_dir push origin master --force");
+
+                $this->passthru('rm -rf ' . $temp_dir);
+
+                $this->log()->notice(
+                    "Sucessfully imported code to {site}.{env}.\n",
                     [
                         'site' => $destination['name'],
                         'env' => $destination['env'],
                     ]
                 );
-                */
-
-                $this->log()->notice(
-                    "Importing code for {site}.{env} goes here...\n",
-                    [
-                        'site' => $destination['name'],
-                        'env' => $destination['env'],
-                    ]
-                );
-                break;
         }
     }
 
@@ -357,6 +389,23 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
         $destination['env_raw']->sendCommandViaSsh('wp search-replace ' . $source['pantheon_domain'] . ' ' . $destination['pantheon_domain']);
 
         $this->log()->notice("\n");
+    }
+
+    /**
+     * Call passthru; throw an exception on failure.
+     *
+     * @param string $command
+     */
+    protected function passthru($command, $loggedCommand = '')
+    {
+        $result = 0;
+        $loggedCommand = empty($loggedCommand) ? $command : $loggedCommand;
+        // TODO: How noisy do we want to be?
+        $this->log()->notice("Running {cmd}", ['cmd' => $loggedCommand]);
+        passthru($command, $result);
+        if ($result != 0) {
+            throw new TerminusException('Command `{command}` failed with exit code {status}', ['command' => $loggedCommand, 'status' => $result]);
+        }
     }
 
 }
