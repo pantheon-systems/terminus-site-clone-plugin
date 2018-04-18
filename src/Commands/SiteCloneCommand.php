@@ -130,9 +130,12 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
                     continue;
                 }
 
+                $this->importBackup($source, $destination, $element, $source_backups[$element]['url']);
+
+            } else {
+                $this->importBackup($source, $destination, $element);
             }
 
-            $this->importBackup($source, $destination, $element);
         }
 
     }
