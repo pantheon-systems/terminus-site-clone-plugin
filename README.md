@@ -5,7 +5,6 @@ Site Clone - A [Terminus](http://github.com/pantheon-systems/terminus) plugin th
 
 ## Requirements
 * [Terminus](https://github.com/pantheon-systems/terminus)
-* [Terminus site clone plugin](https://github.com/ataylorme/terminus-site-clone)
 * [git command line](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
 
 ## Usage
