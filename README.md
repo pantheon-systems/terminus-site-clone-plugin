@@ -1,10 +1,13 @@
 **Warning** this plugin is still in development. Use at your own risk.
 
 # Terminus Site Clone
-Site Clone - A [Terminus](http://github.com/pantheon-systems/terminus) plugin that adds command(s) to facilitate cloning sites on [Pantheon](https://pantheon.io/).
+Site Clone - A [Terminus](http://github.com/pantheon-systems/terminus) plugin that adds the `site:clone` command to facilitate cloning sites on [Pantheon](https://pantheon.io/).
+
+## Installation
+Clone this project into your Terminus plugins directory found at `$HOME/.terminus/plugins`. If the `$HOME/.terminus/plugins` directory does not exists you can safely create it. See [installing Terminus plugin](https://pantheon.io/docs/terminus/plugins/#install-plugins) for details.
 
 ## Requirements
-* [Terminus](https://github.com/pantheon-systems/terminus)
+* [Terminus](https://github.com/pantheon-systems/terminus) `1.1.1` or greater
 * [git command line](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
 
 ## Usage
