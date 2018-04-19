@@ -11,7 +11,11 @@ Clone this project into your Terminus plugins directory found at `$HOME/.terminu
 * [git command line](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
 
 ## Usage
-`terminus site:clone <source>.<env> <destination>.<env>` where `<source>` and `<destination>` are site UUID or machine name and `<env>` is a valid environment (dev, test, live or multidev). You can also pass the argument(s) `--no-database`, `--no-files` and `--no-code` to skip cloning one or more items. You cannot, however, skip all three.
+`terminus site:clone <source>.<env> <destination>.<env>` where `<source>` and `<destination>` are site UUID or machine name and `<env>` is a valid environment (dev or multidev).
+
+The test and live environment cannot be cloned to or from as work must go through [the Pantheon workflow](https://pantheon.io/docs/pantheon-workflow/).
+
+You can also pass the argument(s) `--no-database`, `--no-files` and/or `--no-code` to skip cloning one or more items. You cannot, however, skip all three as there would be nothing left to clone.
 
 ## License
 MIT
