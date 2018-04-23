@@ -76,12 +76,12 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
             throw new TerminusException('Cannot clone sites that are frozen.');
         }
 
-        if( in_array($destination['env'], ['test', 'live']) ){
-            throw new TerminusException('Cannot clone to the test or live environments. You must use the dev => test => live workflow.');
+        if( in_array($destination['env'], ['test', 'live']) && ! $options['no-code'] ){
+            throw new TerminusException('Cannot clone code to the test or live environments. To clone database and files use --no-code.');
         }
         
-        if( in_array($source['env'], ['test', 'live']) ){
-            throw new TerminusException('Cannot clone from the test or live environments. Try dev or a multidev environment.');
+        if( in_array($source['env'], ['test', 'live']) && ! $options['no-code'] ){
+            throw new TerminusException('Cannot clone code from the test or live environments. To clone database and files use --no-code.');
         }
 
         $confirmation_message = 'Are you sure you want to clone from the {src}.{src_env} environment (source) to the {dest}.{dest_env} (destination)? This will completely destroy the destination.';

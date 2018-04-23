@@ -13,7 +13,7 @@ Clone this project into your Terminus plugins directory found at `$HOME/.terminu
 ## Usage
 `terminus site:clone <source>.<env> <destination>.<env>` where `<source>` and `<destination>` are site UUID or machine name and `<env>` is a valid environment (dev or multidev).
 
-The test and live environment cannot be cloned to or from as work must go through [the Pantheon workflow](https://pantheon.io/docs/pantheon-workflow/).
+Code cannot be cloned to or from test and live environments as work must go through [the Pantheon workflow](https://pantheon.io/docs/pantheon-workflow/). You can, however, use `--no-code` to clone the files and database to or from a test or live environment.
 
 You can also pass the argument(s) `--no-database`, `--no-files` and/or `--no-code` to skip cloning one or more items. You cannot, however, skip all three as there would be nothing left to clone.
 
