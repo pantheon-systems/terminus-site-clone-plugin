@@ -46,7 +46,6 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
                 'no-backup' => false,
         ])
     {
-        // $user = $this->session()->getUser();
 
         $source = $this->fetchSiteDetails($user_source);
         $destination = $this->fetchSiteDetails($user_destination);
@@ -105,7 +104,7 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
         }
 
         if( ! $options['no-backup'] ){
-            // $this->createBackup($destination);
+            $this->createBackup($destination);
         }
 
         $backup_elements = $this->getBackupElements($options);
