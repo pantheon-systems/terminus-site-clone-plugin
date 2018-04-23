@@ -31,19 +31,19 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
      * @param string $user_source The site UUID or machine name of the SOURCE (<site>.<env>)
      * @param string $user_destination The site UUID or machine name of the DESTINATION (<site>.<env>)
      * @param array $options
-     * @option no-database Skip cloning the database
-     * @option no-files Skip cloning the (media) files
-     * @option no-code Skip cloning the code
-     * @option no-backup Skip making a fresh backup for export from the source site AND skip backup creation before import on the destination site
+     * @option database Clone the database.
+     * @option files Clone the (media) files.
+     * @option code Clone the code.
+     * @option backup Backup the source and destination sites before cloning.
      */
     public function clonePantheonSite(
             $user_source,
             $user_destination,
             $options = [
-                'no-database' => false,
-                'no-files' => false,
-                'no-code' => false,
-                'no-backup' => false,
+                'database' => false,
+                'files' => true,
+                'code' => true,
+                'backup' => true,
         ])
     {
 
@@ -75,17 +75,17 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
             throw new TerminusException('Cannot clone sites that are frozen.');
         }
 
-        if( in_array($destination['env'], ['test', 'live']) && ! $options['no-code'] ){
+        if( in_array($destination['env'], ['test', 'live']) && $options['code'] ){
             throw new TerminusException('Cannot clone code to the test or live environments. To clone database and files use --no-code.');
         }
         
-        if( in_array($source['env'], ['test', 'live']) && ! $options['no-code'] ){
+        if( in_array($source['env'], ['test', 'live']) && $options['code'] ){
             throw new TerminusException('Cannot clone code from the test or live environments. To clone database and files use --no-code.');
         }
 
         $confirmation_message = 'Are you sure you want to clone from the {src}.{src_env} environment (source) to the {dest}.{dest_env} (destination)? This will completely destroy the destination.';
 
-        if( ! $options['no-backup'] ){
+        if( $options['backup'] ){
             $confirmation_message .= ' A backup will be made first, just in case.';
         }
 
@@ -103,7 +103,7 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
             return;
         }
 
-        if( ! $options['no-backup'] ){
+        if( $options['backup'] ){
             $this->createBackup($destination);
         }
 
@@ -115,7 +115,7 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
 
             if( 'code' !== $element ){
             
-                if( ! $options['no-backup'] ){
+                if( $options['backup'] ){
                     $this->createBackup($source, $element);
                 }
 
@@ -173,15 +173,15 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
     {
         $elements = [];
             
-        if ( ! $options['no-code'] ) {
+        if ( $options['code'] ) {
             $elements[] = 'code';
         }
 
-        if ( ! $options['no-database'] ) {
+        if ( $options['database'] ) {
             $elements[] = 'database';
         }
         
-        if ( ! $options['no-files'] ) {
+        if ( $options['files'] ) {
             $elements[] = 'files';
         }
 
