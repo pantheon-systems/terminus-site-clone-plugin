@@ -59,7 +59,7 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
                 ]
             );
 
-            $proceed = $this->confirm('The sites do not have matching PHP versions. Would you like to proceed?');
+            $proceed = $this->confirm('The environments do not have matching PHP versions. Would you like to proceed? This will overwrite the PHP version of the destination.');
             
             if (!$proceed) {
                 return;
