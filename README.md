@@ -17,5 +17,7 @@ Code cannot be cloned to or from test and live environments as work must go thro
 
 You can also pass the argument(s) `--no-database`, `--no-files` and/or `--no-code` to skip cloning one or more items. You cannot, however, skip all three as there would be nothing left to clone.
 
+**Note files and database backups over 500MBs will not work** due to Pantheon import file size limits. If your files or database are over 500MB they will need to be [manually migrated](https://pantheon.io/docs/migrate-manual/).
+
 ## License
 MIT
