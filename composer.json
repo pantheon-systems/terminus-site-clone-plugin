@@ -1,5 +1,5 @@
 {
-    "name": "ataylorme/terminus-site-clone-plugin",
+    "name": "pantheon-systems/terminus-site-clone-plugin",
     "description": "Site Clone - A Terminus plugin that adds command(s) to facilitate cloning sites on Pantheon.",
     "license": "MIT",
     "type": "terminus-plugin",
