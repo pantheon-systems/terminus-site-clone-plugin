@@ -1,5 +1,3 @@
-**Warning** this plugin is still in development. Use at your own risk.
-
 # Terminus Site Clone
 Site Clone - A [Terminus](http://github.com/pantheon-systems/terminus) plugin that adds the `site:clone` command to facilitate cloning sites on [Pantheon](https://pantheon.io/).
 
