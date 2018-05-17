@@ -251,6 +251,7 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
             );
 
             $this->createBackup($site);
+            $backups = $site['env_raw']->getBackups()->getFinishedBackups($element);
         }
 
         $latest_backup = array_shift($backups);
