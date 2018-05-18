@@ -40,7 +40,7 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
             $user_source,
             $user_destination,
             $options = [
-                'database' => false,
+                'database' => true,
                 'files' => true,
                 'code' => true,
                 'backup' => true,
