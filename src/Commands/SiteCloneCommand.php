@@ -47,6 +47,11 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
         ])
     {
 
+        // Make sure options are booleans and not strings
+        foreach( $options as $key => $value ){
+            $options[$key] = boolval( $value );
+        }
+
         $source = $this->fetchSiteDetails($user_source);
         $destination = $this->fetchSiteDetails($user_destination);
 
@@ -108,6 +113,13 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
         }
 
         $backup_elements = $this->getBackupElements($options);
+
+        $this->log()->notice(
+            'Cloning the following elements: {elements}',
+            [
+                'elements' => implode( ', ', $backup_elements),
+            ]
+        );
         
         $source_backups = [];
         
@@ -119,7 +131,7 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
                     $this->createBackup($source, $element);
                 }
 
-                $source_backups[$element] = $this->getLatestBackup($source, $element);
+                $source_backups[$element] = $this->getLatestBackup($source, $element, $options);
 
                 if( !isset( $source_backups[$element]['url'] ) || empty( $source_backups[$element]['url'] ) ){
                     $this->log()->notice(
@@ -235,25 +247,46 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
         return $backup;
     }
 
-    private function getLatestBackup($site, $element = 'all')
+    private function getLatestBackup($site, $element = 'all', $options)
     {
+        // Refresh the site info.
+        // Without this call it was possible to get an empty list.
+        // https://github.com/pantheon-systems/terminus-site-clone-plugin/issues/2
+        $site = $this->fetchSiteDetails($site['name'] . '.' . $site['env']);
 
         $backups = $site['env_raw']->getBackups()->getFinishedBackups($element);
 
         if ( empty($backups) ) {
-            $this->log()->notice(
-                "No {element} backups in the {site}.{env} environment found.\n",
+            
+            if( ! $options['backup'] ){
+                $backup_error_message = 'No {element} backups in the source {site}.{env} environment found and the backup argument is set to false. Please either enable the backup argument or manually make a backup of the source environment before re-running the site clone.';
+            } else {
+                $backup_error_message = 'No {element} backups in the source {site}.{env} environment found.';
+            }
+
+            throw new TerminusException(
+                $backup_error_message,
                 [
                     'site' => $site['name'],
                     'env' => $site['env'],
                     'element' => $element,
                 ]
             );
-
-            $this->createBackup($site);
+            
         }
 
         $latest_backup = array_shift($backups);
+
+        if( null === $latest_backup ){
+            throw new TerminusException(
+                'There was an error fetching a {element} backup from the source {site}.{env} environment.',
+                [
+                    'site' => $site['name'],
+                    'env' => $site['env'],
+                    'element' => $element,
+                ]
+            );
+        }
 
         $return = $latest_backup->serialize();
 
