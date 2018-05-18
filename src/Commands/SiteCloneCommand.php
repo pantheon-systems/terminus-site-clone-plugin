@@ -40,12 +40,17 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
             $user_source,
             $user_destination,
             $options = [
-                'database' => false,
+                'database' => true,
                 'files' => true,
                 'code' => true,
                 'backup' => true,
         ])
     {
+
+        // Make sure options are booleans and not strings
+        foreach( $options as $key => $value ){
+            $options[$key] = boolval( $value );
+        }
 
         $source = $this->fetchSiteDetails($user_source);
         $destination = $this->fetchSiteDetails($user_destination);
@@ -108,6 +113,13 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
         }
 
         $backup_elements = $this->getBackupElements($options);
+
+        $this->log()->notice(
+            'Cloning the following elements: {elements}',
+            [
+                'elements' => implode( ', ', $backup_elements),
+            ]
+        );
         
         $source_backups = [];
         
