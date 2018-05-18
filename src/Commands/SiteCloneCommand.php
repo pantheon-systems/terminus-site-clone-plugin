@@ -249,7 +249,11 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
 
     private function getLatestBackup($site, $element = 'all', $options)
     {
-
+        // Refresh the site info.
+        // Without this call it was possible to get an empty list.
+        // https://github.com/pantheon-systems/terminus-site-clone-plugin/issues/2
+        $site = $this->fetchSiteDetails($site['name'] . '.' . $site['env']);
+        
         $backups = $site['env_raw']->getBackups()->getFinishedBackups($element);
 
         if ( empty($backups) ) {
