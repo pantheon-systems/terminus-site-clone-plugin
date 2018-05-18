@@ -131,7 +131,7 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
                     $this->createBackup($source, $element);
                 }
 
-                $source_backups[$element] = $this->getLatestBackup($source, $element);
+                $source_backups[$element] = $this->getLatestBackup($source, $element, $options);
 
                 if( !isset( $source_backups[$element]['url'] ) || empty( $source_backups[$element]['url'] ) ){
                     $this->log()->notice(
@@ -247,26 +247,42 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
         return $backup;
     }
 
-    private function getLatestBackup($site, $element = 'all')
+    private function getLatestBackup($site, $element = 'all', $options)
     {
 
         $backups = $site['env_raw']->getBackups()->getFinishedBackups($element);
 
         if ( empty($backups) ) {
-            $this->log()->notice(
-                "No {element} backups in the {site}.{env} environment found.\n",
+            
+            if( ! $options['backup'] ){
+                $backup_error_message = 'No {element} backups in the source {site}.{env} environment found and the backup argument is set to false. Please either enable the backup argument or manually make a backup of the source environment before re-running the site clone.';
+            } else {
+                $backup_error_message = 'No {element} backups in the source {site}.{env} environment found.';
+            }
+
+            throw new TerminusException(
+                $backup_error_message,
                 [
                     'site' => $site['name'],
                     'env' => $site['env'],
                     'element' => $element,
                 ]
             );
-
-            $this->createBackup($site);
-            $backups = $site['env_raw']->getBackups()->getFinishedBackups($element);
+            
         }
 
         $latest_backup = array_shift($backups);
+
+        if( null === $latest_backup ){
+            throw new TerminusException(
+                'There was an error fetching a {element} backup from the source {site}.{env} environment.',
+                [
+                    'site' => $site['name'],
+                    'env' => $site['env'],
+                    'element' => $element,
+                ]
+            );
+        }
 
         $return = $latest_backup->serialize();
 
