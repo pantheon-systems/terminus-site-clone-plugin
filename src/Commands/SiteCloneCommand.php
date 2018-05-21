@@ -199,7 +199,6 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
     /**
      * Get backup elements based on input options
      *
-     * @param array $this->options
      * @return array
      */
     private function getBackupElements()
@@ -385,12 +384,12 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
                 $site_clone_dir = getcwd();
                 $temp_dir = $site_clone_dir . '/terminus-site-clone-temp/';
                 $git_dir = $temp_dir . $this->source['name'] . '/';
-                $this->source_connection_info = $this->source['env_raw']->connectionInfo();
-                $this->source_git_url = $this->source_connection_info['git_url'];
-                $this->source_git_branch = ( in_array($this->source['env'], ['dev', 'test', 'live']) ) ? 'master' : $this->source['env'];
-                $this->destination_connection_info = $this->destination['env_raw']->connectionInfo();
-                $this->destination_git_url = $this->destination_connection_info['git_url'];
-                $this->destination_git_branch = ( in_array($this->destination['env'], ['dev', 'test', 'live']) ) ? 'master' : $this->destination['env'];
+                $source_connection_info = $this->source['env_raw']->connectionInfo();
+                $source_git_url = $source_connection_info['git_url'];
+                $source_git_branch = ( in_array($this->source['env'], ['dev', 'test', 'live']) ) ? 'master' : $this->source['env'];
+                $destination_connection_info = $this->destination['env_raw']->connectionInfo();
+                $destination_git_url = $destination_connection_info['git_url'];
+                $destination_git_branch = ( in_array($this->destination['env'], ['dev', 'test', 'live']) ) ? 'master' : $this->destination['env'];
 
                 $this->destination['env_raw']->changeConnectionMode('git');
                 
@@ -407,7 +406,7 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
                         ]
                     );
 
-                    $this->passthru("git clone $this->source_git_url $git_dir");
+                    $this->passthru("git clone $source_git_url $git_dir");
                 } else {
                     $this->log()->notice(
                         '{git_dir} already exists for for {site}.{env}. Fetching the latest...',
@@ -418,16 +417,16 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
                         ]
                     );
 
-                    $this->passthru("git -C $git_dir remote set-url origin " . $this->source_git_url);
+                    $this->passthru("git -C $git_dir remote set-url origin " . $source_git_url);
                     $this->passthru("git -C $git_dir fetch --all");
-                    $this->passthru("git -C $git_dir pull origin $this->source_git_branch");
-                    $this->passthru("git -C $git_dir remote set-url origin " . $this->destination_git_url);
+                    $this->passthru("git -C $git_dir pull origin $source_git_branch");
+                    $this->passthru("git -C $git_dir remote set-url origin " . $destination_git_url);
                 }
                 
                 if( false === in_array( $this->destination['env'], ['dev','test','live'] ) ){
-                    $this->passthru("git -C $git_dir checkout " . $this->source_git_branch);
-                    $this->passthru("git -C $git_dir fetch origin " . $this->source_git_branch);
-                    $this->passthru("git -C $git_dir merge origin/" . $this->source_git_branch);
+                    $this->passthru("git -C $git_dir checkout " . $source_git_branch);
+                    $this->passthru("git -C $git_dir fetch origin " . $source_git_branch);
+                    $this->passthru("git -C $git_dir merge origin/" . $source_git_branch);
                 }
 
                 $this->log()->notice(
@@ -436,13 +435,13 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
                         'site' => $this->destination['name'],
                         'env' => $this->destination['env'],
                         'git_dir' => $git_dir,
-                        'git_branch' => $this->destination_git_branch,
+                        'git_branch' => $destination_git_branch,
                     ]
                 );
 
-                $this->passthru("git -C $git_dir remote set-url origin " . $this->destination_git_url);
+                $this->passthru("git -C $git_dir remote set-url origin " . $destination_git_url);
                 
-                $this->passthru("git -C $git_dir push origin $this->source_git_branch:$this->destination_git_branch --force");
+                $this->passthru("git -C $git_dir push origin $source_git_branch:$destination_git_branch --force");
 
                 $this->log()->notice(
                     "Sucessfully imported code to {site}.{env}.\n",
