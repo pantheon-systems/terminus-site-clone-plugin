@@ -229,7 +229,7 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
      *
      * @param array $site the site details from fetchSiteDetails to backup
      * @param string $element the element to backup
-     * @return void
+     * @return object an instance of the backup element
      */
     private function createBackup($site, $element = 'all' )
     {
@@ -279,7 +279,7 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
      *
      * @param array the site details from fetchSiteDetails to get a backup of
      * @param string $element the backup element to get
-     * @return void
+     * @return array information for the the latest backup
      */
     private function getLatestBackup($site, $element = 'all')
     {
