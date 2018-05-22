@@ -224,6 +224,13 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
         return $elements;
     }
 
+    /**
+     * Create Backup
+     *
+     * @param array $site the site details from fetchSiteDetails to backup
+     * @param string $element the element to backup
+     * @return void
+     */
     private function createBackup($site, $element = 'all' )
     {
         $message = 'Creating a {element} backup on the {site}.{env} environment...';
@@ -267,6 +274,13 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
         return $backup;
     }
 
+    /**
+     * Get latest backup
+     *
+     * @param array the site details from fetchSiteDetails to get a backup of
+     * @param string $element the backup element to get
+     * @return void
+     */
     private function getLatestBackup($site, $element = 'all')
     {
         // Refresh the site info.
@@ -315,6 +329,13 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
         return $return;
     }
 
+    /**
+     * Import backup
+     *
+     * @param string $element
+     * @param string $url
+     * @return void
+     */
     private function importBackup($element, $url = null)
     {
         
@@ -453,6 +474,11 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
         }
     }
 
+    /**
+     * Replace the sourceURL with the destination URL on the destination environment
+     *
+     * @return void
+     */
     private function wpcliSearchReplace()
     {
         $this->log()->notice(
