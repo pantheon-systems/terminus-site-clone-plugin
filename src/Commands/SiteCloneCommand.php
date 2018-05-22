@@ -13,6 +13,7 @@ use Pantheon\Terminus\Commands\Site\SiteCommand;
 use Pantheon\Terminus\Request\RequestAwareInterface;
 use Pantheon\Terminus\Request\RequestAwareTrait;
 use Pantheon\Terminus\Commands\Backup\SingleBackupCommand;
+use Symfony\Component\Filesystem\Filesystem;
 
 /**
  * Site Clone Command
@@ -27,6 +28,8 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
     private $user_destination;
     private $source;
     private $destination;
+    private $temp_dir;
+    private $git_dir;
     
     /**
      * Copy the code, db and files from the specified Pantheon source site
@@ -41,6 +44,7 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
      * @option files Clone the (media) files.
      * @option code Clone the code.
      * @option backup Backup the source and destination sites before cloning.
+     * @option cleanup-temp-dir Delete the temporary directory used for code clone after cloning is complete. Use "cleanup-temp-dir" to leave the directory in place, making multiple clones of the same source site faster by using the existing temp directory rather than doing a git clone each time.
      */
     public function clonePantheonSite(
             $user_source,
@@ -50,6 +54,7 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
                 'files' => true,
                 'code' => true,
                 'backup' => true,
+                'cleanup-temp-dir' => true,
             ]
         )
     {
@@ -64,6 +69,8 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
         $this->source = $this->fetchSiteDetails($user_source);
         $this->user_destination = $user_destination;
         $this->destination = $this->fetchSiteDetails($user_destination);
+        $this->temp_dir = sys_get_temp_dir() . '/terminus-site-clone-temp/';
+        $this->git_dir = $this->temp_dir . $this->source['name'] . '/';
 
         if( $this->source['php_version'] !== $this->destination['php_version'] ){
             $this->log()->notice(
@@ -402,9 +409,6 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
                     ]
                 );
 
-                $site_clone_dir = getcwd();
-                $temp_dir = $site_clone_dir . '/terminus-site-clone-temp/';
-                $git_dir = $temp_dir . $this->source['name'] . '/';
                 $source_connection_info = $this->source['env_raw']->connectionInfo();
                 $source_git_url = $source_connection_info['git_url'];
                 $source_git_branch = ( in_array($this->source['env'], ['dev', 'test', 'live']) ) ? 'master' : $this->source['env'];
@@ -415,39 +419,49 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
                 $this->destination['env_raw']->changeConnectionMode('git');
                 
                 clearstatcache();
-                if( ! file_exists( $git_dir ) ){
-                    mkdir($temp_dir, 0700, true);
+
+                if( ! file_exists( $this->temp_dir ) ){
+                    $this->log()->notice(
+                        'Creating the temporary {temp_dir} directory...',
+                        [
+                            'temp_dir' => $this->temp_dir,
+                        ]
+                    );
+                    mkdir($this->temp_dir, 0700, true);
+                }
+                
+                if( ! file_exists( $this->git_dir ) ){
 
                     $this->log()->notice(
                         'Cloning code for {site}.{env} to {git_dir}...',
                         [
                             'site' => $this->destination['name'],
                             'env' => $this->destination['env'],
-                            'git_dir' => $git_dir,
+                            'git_dir' => $this->git_dir,
                         ]
                     );
 
-                    $this->passthru("git clone $source_git_url $git_dir");
+                    $this->passthru("git clone $source_git_url " . $this->git_dir);
                 } else {
                     $this->log()->notice(
                         '{git_dir} already exists for for {site}.{env}. Fetching the latest...',
                         [
                             'site' => $this->destination['name'],
                             'env' => $this->destination['env'],
-                            'git_dir' => $git_dir,
+                            'git_dir' => $this->git_dir,
                         ]
                     );
 
-                    $this->passthru("git -C $git_dir remote set-url origin " . $source_git_url);
-                    $this->passthru("git -C $git_dir fetch --all");
-                    $this->passthru("git -C $git_dir pull origin $source_git_branch");
-                    $this->passthru("git -C $git_dir remote set-url origin " . $destination_git_url);
+                    $this->passthru("git -C {$this->git_dir} remote set-url origin $source_git_url");
+                    $this->passthru("git -C {$this->git_dir} fetch --all");
+                    $this->passthru("git -C {$this->git_dir} pull origin $source_git_branch");
+                    $this->passthru("git -C {$this->git_dir} remote set-url origin $destination_git_url");
                 }
                 
                 if( false === in_array( $this->destination['env'], ['dev','test','live'] ) ){
-                    $this->passthru("git -C $git_dir checkout " . $source_git_branch);
-                    $this->passthru("git -C $git_dir fetch origin " . $source_git_branch);
-                    $this->passthru("git -C $git_dir merge origin/" . $source_git_branch);
+                    $this->passthru("git -C {$this->git_dir} checkout $source_git_branch");
+                    $this->passthru("git -C {$this->git_dir} fetch origin $source_git_branch");
+                    $this->passthru("git -C {$this->git_dir} merge origin/$source_git_branch");
                 }
 
                 $this->log()->notice(
@@ -455,14 +469,14 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
                     [
                         'site' => $this->destination['name'],
                         'env' => $this->destination['env'],
-                        'git_dir' => $git_dir,
+                        'git_dir' => $this->git_dir,
                         'git_branch' => $destination_git_branch,
                     ]
                 );
 
-                $this->passthru("git -C $git_dir remote set-url origin " . $destination_git_url);
+                $this->passthru("git -C {$this->git_dir} remote set-url origin $destination_git_url");
                 
-                $this->passthru("git -C $git_dir push origin $source_git_branch:$destination_git_branch --force");
+                $this->passthru("git -C {$this->git_dir} push origin $source_git_branch:$destination_git_branch --force");
 
                 $this->log()->notice(
                     "Sucessfully imported code to {site}.{env}.\n",
@@ -471,6 +485,21 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
                         'env' => $this->destination['env'],
                     ]
                 );
+
+                if( $this->options['cleanup-temp-dir'] ){
+                
+                    $this->passthru("ls {$this->temp_dir}");
+                    $this->passthru("ls {$this->git_dir}");
+                    $this->log()->notice(
+                        'Deleting the temporary {temp_dir} directory...',
+                        [
+                            'temp_dir' => $this->temp_dir,
+                        ]
+                    );
+                    $fs = new Filesystem();
+                    $fs->remove($this->temp_dir);
+
+                }
         }
     }
 
