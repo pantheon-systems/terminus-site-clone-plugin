@@ -32,8 +32,8 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
     private $git_dir;
     
     /**
-     * Copy the code, db and files from the specified Pantheon source site
-     * to the specified Pantheon destination site.
+     * Copy the code, database, and media files from the specified Pantheon
+     * source site to the specified Pantheon destination site.
      *
      * @command site:clone
      * @aliases site:copy
@@ -44,7 +44,9 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
      * @option files Clone the (media) files.
      * @option code Clone the code.
      * @option backup Backup the source and destination sites before cloning.
-     * @option cleanup-temp-dir Delete the temporary directory used for code clone after cloning is complete. Use "cleanup-temp-dir" to leave the directory in place, making multiple clones of the same source site faster by using the existing temp directory rather than doing a git clone each time.
+     * @option cleanup-temp-dir Delete the temporary directory used for code clone after cloning is complete. 
+     * Use "cleanup-temp-dir" to leave the directory in place, making multiple clones of the same 
+     * source site faster by using the existing temp directory rather than doing a git clone each time.
      */
     public function clonePantheonSite(
             $user_source,
