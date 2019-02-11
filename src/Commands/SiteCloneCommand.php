@@ -37,8 +37,8 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
      *
      * @command site:clone
      * @aliases site:copy
-     * @param string $user_source The site UUID or machine name of the SOURCE (<UUID>.env or <site>.<env>)
-     * @param string $user_destination The site UUID or machine name of the DESTINATION (<UUID>.env or <site>.<env>)
+     * @param string $user_source The site UUID or machine name of the SOURCE site and environment (<UUID>.<env> or <site>.<env>)
+     * @param string $user_destination The site UUID or machine name of the DESTINATION and environment (<UUID>.<env> or <site>.<env>)
      * @param array $options
      * @option database Clone the database.
      * @option files Clone the (media) files.
