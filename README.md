@@ -15,7 +15,7 @@ This repository is provided without warranty or direct support. Issues and quest
 Clone this project into your Terminus plugins directory found at `$HOME/.terminus/plugins`. If the `$HOME/.terminus/plugins` directory does not exists you can safely create it. You will also need to run `composer install` in the plugin directory after cloning it. See [installing Terminus plugin](https://pantheon.io/docs/terminus/plugins/#install-plugins) for details.
 
 ## Requirements
-* [Terminus](https://github.com/pantheon-systems/terminus) `1.8.0` or greater
+* [Terminus](https://github.com/pantheon-systems/terminus) `1.x`, version `1.8.0` or greater. **NOT** compatible with Terminus `2.x`.
 * [git command line](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
 
 ## Usage
