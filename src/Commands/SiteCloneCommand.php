@@ -42,16 +42,15 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
      *
      * @command site:clone
      * @aliases site:copy
-     * @param string $user_source The site UUID or machine name of the SOURCE (<site>.<env>)
-     * @param string $user_destination The site UUID or machine name of the DESTINATION (<site>.<env>)
+     * @param string $user_source The site UUID or machine name and environment of the SOURCE (<site>.<env>)
+     * @param string $user_destination The site UUID or machine name and environment of the DESTINATION (<site>.<env>)
      * @param array $options
      * @option database Clone the database.
      * @option files Clone the (media) files.
      * @option code Clone the code.
-     * @option backup Backup the source and destination sites before cloning.
+     * @option source-backup Backup the source site environment before cloning.
+     * @option destination-backup Backup the destination site environment before cloning.
      * @option cleanup-temp-dir Delete the temporary directory used for code clone after cloning is complete. 
-     * Use "cleanup-temp-dir" to leave the directory in place, making multiple clones of the same 
-     * source site faster by using the existing temp directory rather than doing a git clone each time.
      */
     public function clonePantheonSite(
             $user_source,
