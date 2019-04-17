@@ -8,11 +8,14 @@
 namespace Pantheon\TerminusSiteClone\Commands;
 
 use Pantheon\Terminus\Commands\TerminusCommand;
+use Pantheon\Terminus\Commands\WorkflowProcessingTrait;
 use Pantheon\Terminus\Exceptions\TerminusException;
 use Pantheon\Terminus\Commands\Site\SiteCommand;
 use Pantheon\Terminus\Request\RequestAwareInterface;
 use Pantheon\Terminus\Request\RequestAwareTrait;
 use Pantheon\Terminus\Commands\Backup\SingleBackupCommand;
+use Pantheon\Terminus\Site\SiteAwareTrait;
+use Pantheon\Terminus\Commands\Remote\WPCommand;
 use Symfony\Component\Filesystem\Filesystem;
 
 /**
@@ -22,6 +25,8 @@ use Symfony\Component\Filesystem\Filesystem;
 class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterface
 {
     use RequestAwareTrait;
+    use WorkflowProcessingTrait;
+    use SiteAwareTrait;
 
     private $options = array();
     private $user_source;
@@ -37,16 +42,15 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
      *
      * @command site:clone
      * @aliases site:copy
-     * @param string $user_source The site UUID or machine name of the SOURCE (<site>.<env>)
-     * @param string $user_destination The site UUID or machine name of the DESTINATION (<site>.<env>)
+     * @param string $user_source The site UUID or machine name and environment of the SOURCE (<site>.<env>)
+     * @param string $user_destination The site UUID or machine name and environment of the DESTINATION (<site>.<env>)
      * @param array $options
      * @option database Clone the database.
      * @option files Clone the (media) files.
      * @option code Clone the code.
-     * @option backup Backup the source and destination sites before cloning.
+     * @option source-backup Backup the source site environment before cloning.
+     * @option destination-backup Backup the destination site environment before cloning.
      * @option cleanup-temp-dir Delete the temporary directory used for code clone after cloning is complete. 
-     * Use "cleanup-temp-dir" to leave the directory in place, making multiple clones of the same 
-     * source site faster by using the existing temp directory rather than doing a git clone each time.
      */
     public function clonePantheonSite(
             $user_source,
@@ -55,7 +59,8 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
                 'database' => true,
                 'files' => true,
                 'code' => true,
-                'backup' => true,
+                'source-backup' => true,
+                'destination-backup' => true,
                 'cleanup-temp-dir' => true,
             ]
         )
@@ -67,23 +72,23 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
             $this->options[$key] = boolval( $value );
         }
 
-        $this->$user_source = $user_source;
+        $this->user_source = $user_source;
         $this->source = $this->fetchSiteDetails($user_source);
         $this->user_destination = $user_destination;
         $this->destination = $this->fetchSiteDetails($user_destination);
+
+
         $this->temp_dir = sys_get_temp_dir() . '/terminus-site-clone-temp/';
         $this->git_dir = $this->temp_dir . $this->source['name'] . '/';
 
         if( $this->source['php_version'] !== $this->destination['php_version'] ){
-            $this->log()->notice(
-                'Warning: the source site has a PHP version of {src_php} and the destination site has a PHP version of {dest_php}',
+            $proceed = $this->confirm(
+                'Warning: the source site has a PHP version of {src_php} and the destination site has a PHP version of {dest_php}. Would you like to proceed? Doing so will overwrite the PHP version of the destination to {src_php}.',
                 [
-                    'src_php' => $this->source['php_version'],
-                    'dest_php' => $this->destination['php_version'],
+                    'src_php' => substr_replace($this->source['php_version'], '.', 1, 0),
+                    'dest_php' => substr_replace($this->destination['php_version'], '.', 1, 0),
                 ]
             );
-
-            $proceed = $this->confirm('The environments do not have matching PHP versions. Would you like to proceed? This will overwrite the PHP version of the destination.');
             
             if (!$proceed) {
                 return;
@@ -127,11 +132,17 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
             return;
         }
 
-        if( $this->options['backup'] ){
+        if( $this->options['destination-backup'] ){
             $this->createBackup($this->destination);
         }
 
         $backup_elements = $this->getBackupElements();
+
+        $backup_all = ( 3 === count($backup_elements) );
+
+        if( $this->options['source-backup'] && $backup_all ){
+            $this->createBackup($this->source);
+        }
 
         $this->log()->notice(
             'Cloning the following elements: {elements}',
@@ -146,7 +157,8 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
 
             if( 'code' !== $element ){
             
-                if( $this->options['backup'] ){
+                // Back up elements individually if not cloning all elements and source backups are on
+                if( $this->options['source-backup'] && ! $backup_all ){
                     $this->createBackup($this->source, $element);
                 }
 
@@ -154,7 +166,7 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
 
                 if( !isset( $source_backups[$element]['url'] ) || empty( $source_backups[$element]['url'] ) ){
                     $this->log()->notice(
-                        'Failed to backup {element} on the {site}.{env} environment. It will not be imported.',
+                        'Failed to get a URL from the latest {element} backup on the {site}.{env} environment. It will not be imported.',
                         [
                             'site' => $this->source['name'],
                             'env' => $this->source['env'],
@@ -192,13 +204,14 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
      * @return array
      */
     private function fetchSiteDetails($site_env){
-        $parsed = $this->getSiteEnv($site_env);
-        $return = $parsed[0]->serialize();
-        $return['site_raw'] = $parsed[0];
+        list($site,$env) = $this->getSiteEnv($site_env);
+        $return = $site->serialize();
+        $return['site_raw'] = $site;
         // Turn the string value of 'true' or 'false' into a boolean
         $return['frozen'] = filter_var($return['frozen'], FILTER_VALIDATE_BOOLEAN);
-        $return['env'] = $parsed[1]->id;
-        $return['env_raw'] = $parsed[1];
+        $return['env'] = $env->id;
+        $return['env_raw'] = $env;
+        $return['php_version'] = $env->get('php_version');
         $return['url'] = 'https://' . $return['env'] . '-' . $return['name'] . '.pantheonsite.io/';
         $return['pantheon_domain'] = $return['env'] . '-' . $return['name'] . '.pantheonsite.io';
 
@@ -227,7 +240,7 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
         }
 
         if( empty($elements) ){
-            throw new TerminusNotFoundException('You cannot skip cloning all elements.');
+            throw new TerminusNotFoundException('You must clone at least one element (code, database or file) and cannot skip them all.');
         }
 
         return $elements;
@@ -259,11 +272,9 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
 
         $backup_options = ['element' => ( $element !== 'all' ) ? $element : null, 'keep-for' => 365,];
         
-        $backup = $site['env_raw']->getBackups()->create($backup_options);
-
-        while (!$backup->checkProgress()) {
-            // @todo: Add Symfony progress bar to indicate that something is happening.
-        }
+        $backup = $this->processWorkflow(
+            $site['env_raw']->getBackups()->create($backup_options)
+        );
 
         $message = "Finished backing up the {element} on the {site}.{env} environment.\n";
         
@@ -333,7 +344,7 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
 
         $return = $latest_backup->serialize();
 
-        $return['url'] = $latest_backup->getUrl();
+        $return['url'] = $latest_backup->getArchiveURL();
 
         return $return;
     }
@@ -359,11 +370,9 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
                     ]
                 );
 
-                $workflow = $this->destination['env_raw']->importDatabase($url);
-                
-                while ( !$workflow->checkProgress() ) {
-                    // @todo: Add Symfony progress bar to indicate that something is happening.
-                }
+                $this->processWorkflow(
+                    $this->destination['env_raw']->importDatabase($url)
+                );
 
                 $this->log()->notice(
                     "Imported the database to {site}.{env}.\n",
@@ -374,7 +383,10 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
                 );
 
                 if( 'wordpress' === $this->destination['framework'] ){
-                    $this->wpcliSearchReplace($this->source, $this->destination);
+                    $this->log()->notice(
+                        "WordPress stores URLs in the database. You may want to use wp-cli search-replace to update URLs in the database.\n"
+                    );
+                    // $this->wpcliSearchReplace();
                 }
                 break;
 
@@ -387,11 +399,9 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
                     ]
                 );
 
-                $workflow = $this->destination['env_raw']->importFiles($url);
-                
-                while ( !$workflow->checkProgress() ) {
-                    // @todo: Add Symfony progress bar to indicate that something is happening.
-                }
+                $this->processWorkflow(
+                    $this->destination['env_raw']->importFiles($url)
+                );
 
                 $this->log()->notice(
                     "Imported the media files to {site}.{env}.\n",
@@ -417,10 +427,14 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
                 $destination_connection_info = $this->destination['env_raw']->connectionInfo();
                 $destination_git_url = $destination_connection_info['git_url'];
                 $destination_git_branch = ( in_array($this->destination['env'], ['dev', 'test', 'live']) ) ? 'master' : $this->destination['env'];
+                $destination_connection_mode = $this->destination['env_raw']->get('connection_mode');
 
-                $this->destination['env_raw']->changeConnectionMode('git');
+                if( 'git' !== $destination_connection_mode ){
+                    $this->destination['env_raw']->changeConnectionMode('git');
+                }
                 
                 clearstatcache();
+                $fs = new Filesystem();
 
                 if( ! file_exists( $this->temp_dir ) ){
                     $this->log()->notice(
@@ -431,41 +445,24 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
                     );
                     mkdir($this->temp_dir, 0700, true);
                 }
-                
-                if( ! file_exists( $this->git_dir ) ){
 
-                    $this->log()->notice(
-                        'Cloning code for {site}.{env} to {git_dir}...',
-                        [
-                            'site' => $this->destination['name'],
-                            'env' => $this->destination['env'],
-                            'git_dir' => $this->git_dir,
-                        ]
-                    );
-
-                    $this->passthru("git clone $source_git_url " . $this->git_dir);
-                } else {
-                    $this->log()->notice(
-                        '{git_dir} already exists for for {site}.{env}. Fetching the latest...',
-                        [
-                            'site' => $this->destination['name'],
-                            'env' => $this->destination['env'],
-                            'git_dir' => $this->git_dir,
-                        ]
-                    );
-
-                    $this->passthru("git -C {$this->git_dir} remote set-url origin $source_git_url");
-                    $this->passthru("git -C {$this->git_dir} fetch --all");
-                    $this->passthru("git -C {$this->git_dir} pull origin $source_git_branch");
-                    $this->passthru("git -C {$this->git_dir} remote set-url origin $destination_git_url");
-                }
-                
-                if( false === in_array( $this->destination['env'], ['dev','test','live'] ) ){
-                    $this->passthru("git -C {$this->git_dir} checkout $source_git_branch");
-                    $this->passthru("git -C {$this->git_dir} fetch origin $source_git_branch");
-                    $this->passthru("git -C {$this->git_dir} merge origin/$source_git_branch");
+                if( file_exists( $this->git_dir ) ){
+                    $fs->remove($this->git_dir);
                 }
 
+                $this->log()->notice(
+                    'Cloning code for {site}.{env} to {git_dir}...',
+                    [
+                        'site' => $this->destination['name'],
+                        'env' => $this->destination['env'],
+                        'git_dir' => $this->git_dir,
+                    ]
+                );
+
+                $this->passthru("git clone --no-tags --single-branch --branch $source_git_branch $source_git_url " . $this->git_dir);
+                $this->passthru("git -C {$this->git_dir} fetch origin $source_git_branch");
+                $this->passthru("git -C {$this->git_dir} pull origin $source_git_branch");
+                
                 $this->log()->notice(
                     'Force pushing to the {site}.{env} on the {git_branch} branch.',
                     [
@@ -490,18 +487,16 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
 
                 if( $this->options['cleanup-temp-dir'] ){
                 
-                    $this->passthru("ls {$this->temp_dir}");
-                    $this->passthru("ls {$this->git_dir}");
                     $this->log()->notice(
                         'Deleting the temporary {temp_dir} directory...',
                         [
                             'temp_dir' => $this->temp_dir,
                         ]
                     );
-                    $fs = new Filesystem();
                     $fs->remove($this->temp_dir);
 
                 }
+                break;
         }
     }
 
@@ -513,7 +508,7 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
     private function wpcliSearchReplace()
     {
         $this->log()->notice(
-            "Using wp-cli search-replace to replace {src_url} with {dest_url} on {site}.{env} as WordPress stores URLs in the database. You may need to run the search-replace manually if using custom domains.\n",
+            "Using wp-cli search-replace to replace {src_url} with {dest_url} on {site}.{env} as WordPress stores URLs in the database. You may need to run the search-replace manually if you are using custom domains.\n",
             [
                 'site' => $this->destination['name'],
                 'env' => $this->destination['env'],
@@ -522,7 +517,12 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
             ]
         );
 
-        $this->destination['env_raw']->sendCommandViaSsh('wp search-replace ' . $this->source['pantheon_domain'] . ' ' . $this->destination['pantheon_domain']);
+        $WPCommand = new WPCommand();
+
+        $WPCommand->wpCommand(
+            $this->destination['name'] . '.' . $this->destination['env'],
+            array('search-replace ' . $this->source['pantheon_domain'] . ' ' . $this->destination['pantheon_domain'])
+        );
 
         $this->log()->notice("\n");
     }
