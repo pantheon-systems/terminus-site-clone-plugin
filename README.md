@@ -2,7 +2,7 @@
 Site Clone - A [Terminus](http://github.com/pantheon-systems/terminus) plugin that adds the `site:clone` command to facilitate cloning sites on [Pantheon](https://pantheon.io/).
 
 ## Disclaimer
-While this script has worked well for us your mileage may vary due to local machine configuration. If you are having issues with running this plugin locally try using [this Dockerfile](https://github.com/pantheon-systems/docker-build-tools-ci/blob/4.x/Dockerfile), which has all the tools needed pre installed.
+While this script has worked well for us your mileage may vary due to local machine configuration. If you are having issues with running this plugin locally try using [this Dockerfile](https://github.com/pantheon-systems/docker-build-tools-ci/blob/6.x/Dockerfile), which has all the tools needed pre installed.
 
 This repository is provided without warranty or direct support. Issues and questions may be filed in GitHub but their resolution is not guaranteed.
 
@@ -16,7 +16,7 @@ Clone this project into your Terminus plugins directory found at `$HOME/.terminu
 
 ## Requirements
 * [Terminus](https://github.com/pantheon-systems/terminus) `2.0` or greater
-* [git command line](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) `1.7.10` or greater
+* [git command line](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) `2.14` or greater
 
 ## Usage
 `terminus site:clone <source>.<env> <destination>.<env>` where `<source>` and `<destination>` are site UUID or machine name and `<env>` is a valid environment (dev or multidev).
