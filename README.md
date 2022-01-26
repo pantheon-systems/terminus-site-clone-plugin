@@ -25,7 +25,7 @@ Code cannot be cloned to or from test and live environments as work must go thro
 
 You can also pass the argument(s) `--no-database`, `--no-files` and/or `--no-code` to skip cloning one or more items. You cannot, however, skip all three as there would be nothing left to clone.
 
-By default, backups are made on both the source and destination environment before cloning. Use `--no-source-backup` and/or `--no-destination-backup` to omit one of both backups.
+By default, backups are made on both the source and destination environment before cloning. Use `--no-source-backup` and/or `--no-destination-backup` to omit one of both backups. If `--no-source-backup` is used, the site will be cloned using the latest database backup, not the current database.
 
 **Note files and database backups over 500MBs will not work** due to Pantheon import file size limits. If your files or database are over 500MB they will need to be [manually migrated](https://pantheon.io/docs/migrate-manual/).
 
