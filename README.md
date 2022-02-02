@@ -27,7 +27,10 @@ You can also pass the argument(s) `--no-database`, `--no-files` and/or `--no-cod
 
 By default, backups are made on both the source and destination environment before cloning. Use `--no-source-backup` and/or `--no-destination-backup` to omit one of both backups.
 
-**Note files and database backups over 500MBs will not work** due to Pantheon import file size limits. If your files or database are over 500MB they will need to be [manually migrated](https://pantheon.io/docs/migrate-manual/).
+## Notes
+
+- Files and database backups over 500MBs will not work** due to Pantheon import file size limits. If your files or database are over 500MB they will need to be [manually migrated](https://pantheon.io/docs/migrate-manual/).
+- If you pass the `--no-source-backup` flag, the system will use the last taken backup as the source database.
 
 ## Changelog
 
