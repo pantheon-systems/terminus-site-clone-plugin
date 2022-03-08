@@ -1,6 +1,8 @@
 # Terminus Site Clone
 Site Clone - A [Terminus](http://github.com/pantheon-systems/terminus) plugin that adds the `site:clone` command to facilitate cloning sites on [Pantheon](https://pantheon.io/).
 
+[![Actively Maintained](https://img.shields.io/badge/Pantheon-Actively_Maintained-yellow?logo=pantheon&color=FFDC28)](https://pantheon.io/docs/oss-support-levels#actively-maintained)
+
 ## Disclaimer
 While this script has worked well for us your mileage may vary due to local machine configuration. If you are having issues with running this plugin locally try using [this Dockerfile](https://github.com/pantheon-systems/docker-build-tools-ci/blob/4.x/Dockerfile), which has all the tools needed pre installed.
 
