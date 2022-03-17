@@ -10,7 +10,10 @@ This repository is provided without warranty or direct support. Issues and quest
 
 ## Installation
 
-### Installing with Composer
+### Installing via Terminus 3
+`terminus self:plugin:install pantheon-systems/terminus-site-clone-plugin`
+
+### Installing with Composer (deprecated method using Terminus 2)
 `composer -n create-project pantheon-systems/terminus-site-clone-plugin:^2 ~/.terminus/plugins/terminus-site-clone-plugin`
 
 ### Manual installation
