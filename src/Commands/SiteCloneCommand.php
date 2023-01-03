@@ -72,7 +72,7 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
             $this->options[$key] = boolval( $value );
         }
 
-        if (!preg_match('/.*\..*/', $user_source) || !preg_match('/.*\..*/', $user_destination)) {
+        if (!preg_match('/.+\..+/', $user_source) || !preg_match('/.+\..+/', $user_destination)) {
             throw new TerminusException('The source and destination sites must be specified as <site>.<env>');
         }
 
