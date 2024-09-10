@@ -1,0 +1,12 @@
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: terminus-site-clone-plugin
+  description: Auto-generated catalog info for pantheon-systems/terminus-site-clone-plugin
+  annotations:
+    backstage.io/techdocs-ref: dir:docs/
+spec:
+  type: tool
+  lifecycle: mature
+  owner: devx
