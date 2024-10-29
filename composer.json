@@ -8,7 +8,13 @@
     },
     "extra": {
         "terminus": {
-            "compatible-version": "^2"
+            "compatible-version": "^3"
         }
+    },
+    "require-dev": {
+        "pantheon-systems/terminus": "^3.5"
+    },
+    "require": {
+        "php": "^8.2"
     }
 }
