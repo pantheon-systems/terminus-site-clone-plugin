@@ -60,7 +60,7 @@ class SandboxCloneCommand extends SingleBackupCommand implements RequestAwareInt
         array $sourceOptions = [
             'env' => 'live',
             'cluster' => null,
-            'namespace' => null,
+            'namespace' => 'production',
         ],
         array $destinationOptions = [
             'env' => 'dev',
@@ -72,7 +72,7 @@ class SandboxCloneCommand extends SingleBackupCommand implements RequestAwareInt
         // user's employee certificate first.
         $cert = getenv('PANTHEON_CERT');
         if (empty($cert)) {
-            throw new TerminusException('In order to use this plugin you need a pantheon employee certificate.');
+            throw new TerminusException('In order to use this plugin you need a pantheon employee certificate. Set the PANTHEON_CERT to the path of the .pem.');
         }
 
         // Where is the work being done?
@@ -89,6 +89,10 @@ class SandboxCloneCommand extends SingleBackupCommand implements RequestAwareInt
         $this->log()->notice('PANTHEON_CERT: ' . $cert);
         $this->log()->notice('Loading employee certificate...');
 
+        if (!file_exists($cert)) {
+            throw new TerminusException('The certificate file does not exist at the path provided.');
+        }
+
         // This class should have been pre-populated with a guzzle client
         // if not, make one.
         $cli = $this->request->getClient();
@@ -96,9 +100,9 @@ class SandboxCloneCommand extends SingleBackupCommand implements RequestAwareInt
             $cli = new \GuzzleHttp\Client();
         }
 
+        $this->log()->notice('Source site: ' $sourceContext->toString() . DIRECTORY_SEPARATOR . $sourceSiteName);
+        $this->log()->notice('Destination site: ' $destinationContext->toString() . DIRECTORY_SEPARATOR . $destinationSiteName);
 
-
-        $this->validateSource($sourceSiteName, $sourceContext);
         $this->validateDestination();
         $this->cloneSite();
     }
@@ -106,6 +110,10 @@ class SandboxCloneCommand extends SingleBackupCommand implements RequestAwareInt
 
 
     function getKubeContext($options) ?KubeContext {
+        if ($this->ns == "production") {
+            return new KubeContext();
+        }
+
         // get the current context and use as default values
         $json = exec("kubectl config view --minify -o jsonpath='{..context}'");
         $toReturn = new KubeContext();

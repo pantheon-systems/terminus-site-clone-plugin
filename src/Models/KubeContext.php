@@ -14,7 +14,8 @@ use Symfony\Component\Console\Output\ConsoleOutput;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
- *
+ * This class provides a configured terminus instance for a specific
+ * kubernetes context.
  */
 class KubeContext
 {
@@ -91,18 +92,13 @@ class KubeContext
         return !empty($this->ns);
     }
 
+
     /**
+     * This returns a configured terminus instance for the given context.
+     *
      * @return Terminus
      */
     public function getTerminus(InputInterface $input, OutputInterface $output = null): Terminus
-    {
-        return new Terminus($this->getConfig(), $input, $output);
-    }
-
-    /**
-     * @return array
-     */
-    public function getTerminus(InputInterface $input, OutputInterface $output = null): array
     {
         // if there's no output provided, just use the default console output
         if ($output == null) {
@@ -144,14 +140,30 @@ class KubeContext
             // if the namespace is not production, we assume it is a sandbox namespace
             // and get the IP address of the sandbox's load balancer
             $external_ip = exec('kubectl get svc pantheonapi -o jsonpath="{.status.loadBalancer.ingress[0].ip}"');
-            $config->set("host", "https://${external_ip}");
+            if (!empty($external_ip)) {
+                $config->set("host", $external_ip);
+                // This is the ssh host for the sandbox
+                $ssh_host = exec(
+                    sprintf(
+                        'kubectl get nodes --namespace %s --cluster %s --selector alpha.pantheon.io/cos-namespace=sandbox-lops,alpha.pantheon.io/type=appserver -o json | jq -r ".items[0].status.addresses[1].address"',
+                        $this->ns,
+                        $this->cluster
+                    )
+
+                );
+            }
             // This is the ssh host for the sandbox
             $ssh_host = exec(
-                'kubectl get nodes --selector alpha.pantheon.io/cos-namespace=sandbox-lops,alpha.pantheon.io/type=appserver -o json | jq -r ".items[0].status.addresses[1].address"'
+                sprintf(
+                    'kubectl get nodes --namespace %s --cluster %s  --selector alpha.pantheon.io/cos-namespace=sandbox-lops,alpha.pantheon.io/type=appserver -o json | jq -r ".items[0].status.addresses[1].address"'
+                    $this->ns,
+                    $this->cluster
+                )
             );
-            $config->set("ssh_host", $ssh_host);
+            if (!empty($ssh_host)) {
+                $config->set("ssh_host", $ssh_host);
+            }
         }
-
 
         $terminus = new static($config, $input, $output);
 
@@ -181,4 +193,11 @@ class KubeContext
         return $terminus;
     }
 
+    /**
+     * @return string
+     */
+    public function __toString(): string
+    {
+        return $this->cluster . DIRECTORY_SEPARATOR . $this->ns;
+    }
 }
