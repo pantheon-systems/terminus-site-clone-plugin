@@ -1,1 +1,4 @@
 terminus-site-clone-temp
+vendor
+
+/composer.lock
