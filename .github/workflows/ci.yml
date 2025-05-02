@@ -8,8 +8,22 @@ jobs:
     name: PHP Compatibility
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: PHPCompatibility
         uses: pantheon-systems/phpcompatibility-action@v1
         with:
           test-versions: 7.4-
+  checkdeprecations:
+    runs-on: ubuntu-latest
+    name: Check for deprecations
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.4
+      - name: Check for deprecations
+        run: |
+          composer install
+          composer run check-deprecations

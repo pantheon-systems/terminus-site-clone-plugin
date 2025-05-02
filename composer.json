@@ -8,7 +8,10 @@
     },
     "extra": {
         "terminus": {
-            "compatible-version": "^2"
+            "compatible-version": "^2||^3||^4"
         }
+    },
+    "scripts": {
+        "check-deprecations": "find src -name '*.php' -print0 | xargs -0 -n1 php -l 2>&1 >/dev/null | tee /tmp/deprecations ; [ ! -s /tmp/deprecations ]"
     }
 }
