@@ -39,7 +39,7 @@ fi
 
 # Start with dev cloning dev
 echo -e "\nCloning the dev environment..."
-terminus site:clone $source_site.dev $destination_site.dev --no-backup --yes
+terminus site:clone $source_site.dev $destination_site.dev --no-source-backup --no-destination-backup --yes
 
 # Create the test environment
 echo -e "\nCreating the test environment on $destination_site..."
@@ -48,7 +48,7 @@ terminus env:deploy $destination_site.test --note="Initialize the test environme
 # Clone db/files from the source site to the test environment
 echo -e "\nCreating a fresh backup of the test environment on $source_site..."
 terminus backup:create $source_site.test
-terminus site:clone $source_site.test $destination_site.test --no-code --no-backup --yes
+terminus site:clone $source_site.test $destination_site.test --no-code --no-source-backup --no-destination-backup --yes
 
 # Create the live environment
 echo -e "\nCreating the live environment on $destination_site..."
@@ -57,7 +57,7 @@ terminus env:deploy $destination_site.live --note="Initialize the live environme
 # Clone db/files from the source site to the live environment
 echo -e "\nCreating a fresh backup of the live environment on $source_site..."
 terminus backup:create $source_site.live
-terminus site:clone $source_site.live $destination_site.live --no-code --no-backup --yes
+terminus site:clone $source_site.live $destination_site.live --no-code --no-source-backup --no-destination-backup --yes
 
 # Stash multidev list
 source_multidevs="$(terminus multidev:list $source_site --format=list --field=Name)"
@@ -71,5 +71,5 @@ for multidev in $source_multidevs; do
 	terminus backup:create $source_site.$multidev
 
 	echo -e "\nCloning the $multidev multidev environment from $source_site..."
-	terminus site:clone $source_site.$multidev $destination_site.$multidev --no-backup --yes
+	terminus site:clone $source_site.$multidev $destination_site.$multidev --no-source-backup --no-destination-backup --yes
 done
