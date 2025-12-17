@@ -1,0 +1,10 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # Dependabot doesn't support private repositories with actions/workflows
+    ignore:
+      - dependency-name: "pantheon-systems/*"
+
