@@ -8,7 +8,7 @@ jobs:
     name: PHP Compatibility
     steps:
       - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: PHPCompatibility
         uses: pantheon-systems/phpcompatibility-action@7bf1b2881e207c80ad4569874ceee225f59537d1 # v1.1.1
         with:
@@ -18,7 +18,7 @@ jobs:
     name: Check for deprecations
     steps:
       - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Setup PHP
         uses: shivammathur/setup-php@44454db4f0199b8b9685a5d763dc37cbf79108e1 # v2
         with:
