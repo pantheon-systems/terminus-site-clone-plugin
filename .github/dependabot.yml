@@ -1,10 +1,19 @@
+# This file is centrally managed by github-terraform. Manual changes will be overwritten.
+# To modify this configuration, update orgs/pantheon-systems/files/dependabot/
+# in https://github.com/pantheon-systems/github-terraform
 version: 2
 updates:
+  # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
-    # Dependabot doesn't support private repositories with actions/workflows
-    ignore:
-      - dependency-name: "pantheon-systems/*"
-
+      day: "sunday"
+      time: "06:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns: ["*"]
+    labels: ["dependencies", "github-actions"]
+    rebase-strategy: "auto"
