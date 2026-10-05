@@ -1,30 +1,27 @@
-# This file is centrally managed by github-terraform. Manual changes will be overwritten.
-# To modify this configuration, update orgs/pantheon-systems/files/dependabot/
+# This file is managed by github-terraform. Manual changes will be overwritten.
+# To modify it, edit orgs/pantheon-systems/files/dependabot/custom/terminus-site-clone-plugin.yml
 # in https://github.com/pantheon-systems/github-terraform
 version: 2
+# Every version update lands in one weekly PR (multi-ecosystem group `dependencies`).
+# Security updates are not part of the group; each opens as its own PR.
+multi-ecosystem-groups:
+  dependencies:
+    schedule:
+      interval: weekly
+      day: "sunday"
+      time: "06:00"
+      timezone: "UTC"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
 updates:
   # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "sunday"
-      time: "06:00"
-      timezone: "UTC"
     cooldown:
       default-days: 3
     open-pull-requests-limit: 5
-    # Minor/patch grouped; majors match no version group → one PR each.
-    groups:
-      actions:
-        applies-to: version-updates
-        patterns: ["*"]
-        update-types: ["minor", "patch"]
-      actions-security:
-        applies-to: security-updates
-        patterns: ["*"]
-    commit-message:
-      prefix: "chore"
-      include: "scope"
     labels: ["dependencies", "github-actions"]
     rebase-strategy: "auto"
+    patterns: ["*"]
+    multi-ecosystem-group: dependencies
