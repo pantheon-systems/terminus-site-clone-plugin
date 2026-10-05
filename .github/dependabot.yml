@@ -20,7 +20,6 @@ updates:
     directory: "/"
     cooldown:
       default-days: 3
-    open-pull-requests-limit: 5
     labels: ["dependencies", "github-actions"]
     rebase-strategy: "auto"
     patterns: ["*"]
