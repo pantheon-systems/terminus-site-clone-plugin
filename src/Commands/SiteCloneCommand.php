@@ -118,7 +118,7 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
 
         $confirmation_message = 'Are you sure you want to clone from the {src}.{src_env} environment (source) to the {dest}.{dest_env} (destination)? This will completely destroy the destination.';
 
-        if( $this->options['backup'] ){
+        if( ! empty( $this->options['backup'] ) ){
             $confirmation_message .= ' A backup will be made first, just in case.';
         }
 
