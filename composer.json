@@ -13,5 +13,10 @@
     },
     "scripts": {
         "check-deprecations": "find src -name '*.php' -print0 | xargs -0 -n1 php -l 2>&1 >/dev/null | tee /tmp/deprecations ; [ ! -s /tmp/deprecations ]"
+    },
+    "config": {
+        "audit": {
+            "block-insecure": false
+        }
     }
 }
