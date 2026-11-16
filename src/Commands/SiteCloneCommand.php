@@ -274,7 +274,7 @@ class SiteCloneCommand extends SingleBackupCommand implements RequestAwareInterf
             ]
         );
 
-        $backup_options = ['element' => ( $element !== 'all' ) ? $element : null, 'keep-for' => 365,];
+        $backup_options = ['element' => ( $element !== 'all' ) ? $element : null,];
         
         $backup = $this->processWorkflow(
             $site['env_raw']->getBackups()->create($backup_options)
